@@ -193,11 +193,16 @@ const getAllUserProfessions = async(req, res) =>{
     // res.status(200).json({"k":"v"});
     try {
         let {page,limit,category_uuid,keyword} = req.query
-        let options = {include:[User]}
+        let options = {include:[User,{
+            model:UserSubscription,
+            where:Sequelize.where(Sequelize.fn('datediff', Sequelize.fn("now") , Sequelize.col('UserSubscription.createdAt')), {
+                [Op.lte] : 366
+            }),
+            required:true
+        }]}
       
 
         if(category_uuid != "null"){
-         console.log("here we go",category_uuid)
            let category = await Category.findOne({
                 where:{
                     uuid:category_uuid
@@ -211,7 +216,6 @@ const getAllUserProfessions = async(req, res) =>{
             }]}
         }
         if(keyword != "null"){
-            
            options.where = {
              title:{
                [Op.like]:`%${keyword}%`
@@ -225,16 +229,7 @@ const getAllUserProfessions = async(req, res) =>{
         const {count, rows} = await UserProfession.findAndCountAll({
             offset: offset, //ruka ngapi
             limit: limit, //leta ngapi
-            ...options,
-            include:[
-                {
-                    model:UserSubscription,
-                    where:Sequelize.where(Sequelize.fn('datediff', Sequelize.fn("now") , Sequelize.col('UserSubscription.createdAt')), {
-                        [Op.lte] : 366
-                    }),
-                    required:true
-                }
-            ]
+            ...options
         })
         const totalPages = (count%limit)>0?parseInt(count/limit)+1:parseInt(count/limit)
         successResponse(res, {count, data:rows, page, totalPages})
